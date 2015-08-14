@@ -40,7 +40,7 @@ parse.gon <- function(gon){
   list(ngons=ngons,length=gon.NL,B=gon.B,E=gon.E,data=gon$data,names=gon$names)
 }
 
-read.line <- function(infile,scale=10^6){
+read.line <- function(infile,scale=10^8){
   data <- read.table(paste(infile,'.line',sep=''),
                    col.names=c('x','y'),na.strings='EOR',fill=TRUE)
   data <- skip.doubles(data)
@@ -796,13 +796,13 @@ point.add2 <- function(xy,pp,ww=world){
 
 ### OUTPUT: routines to create the new source files 
 
-export.map <- function(ww=world,outfile='world',scale=1,ndec=7){
+export.map <- function(ww=world,outfile='world',scale=10^8,ndec=8){
 # line data
   lfile <- paste(outfile,'.line',sep='')
   lsfile <- paste(outfile,'.linestats',sep='')
 
-  lx <- round(ww$line$x * scale,ndec)
-  ly <- round(ww$line$y * scale,ndec)
+  lx <- round(ww$line$x / scale,ndec)
+  ly <- round(ww$line$y / scale,ndec)
   system(paste('rm -f',lfile,lsfile))
   for(loc in 1:ww$line$nlines){
     write(paste(ww$line$L[loc],ww$line$R[loc]),file=lfile,append=TRUE)
