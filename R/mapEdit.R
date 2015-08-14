@@ -118,7 +118,7 @@ parse.line <- function(ww=world){
   list(x=ww$x,y=ww$y,nlines=nlines,L=ww$L,R=ww$R,B=line.B,E=line.E,length=line.NP)
 }
 
-flip.line <- function(loc,ww=world,mirror=TRUE){
+line.flip <- function(loc,ww=world,mirror=TRUE){
 ### reverse the direction of a line
 ### mirroring (=adapt left and right region) isn't crucial 
 ### because these L and R are often switched anyway
@@ -144,8 +144,8 @@ flip.line <- function(loc,ww=world,mirror=TRUE){
 ### LINE MERGING
 ### line.valence
 ### line.partner
-### merge.line
-### extend.line
+### line.merge
+### line.extend
 ### map.merge
 
 line.valence <- function(loc,ww=world){
@@ -209,12 +209,12 @@ line.partner <- function(loc,end,ww=world){
   }
 }
 
-merge.line <- function(l1,l2,ww=world,quiet=FALSE){
+line.merge <- function(l1,l2,ww=world,quiet=FALSE){
 ### function that actually merges two line segments
 ### this also requires changing the polygon definitions!
   if(!quiet) print(paste('Merge lines',l1,l2))
-  if(l1<0) {l1 <- -l1;ww <- flip.line(l1,ww)}
-  if(l2<0) {l2 <- -l2;ww <- flip.line(l2,ww)}
+  if(l1<0) {l1 <- -l1;ww <- line.flip(l1,ww)}
+  if(l2<0) {l2 <- -l2;ww <- line.flip(l2,ww)}
 
 
   if(ww$line$x[ww$line$E[l1]]!=ww$line$x[ww$line$B[l2]] |
@@ -281,14 +281,14 @@ merge.line <- function(l1,l2,ww=world,quiet=FALSE){
   list(gon=ngon,line=nline)
 }
 
-extend.line <- function(loc,ww=world){
+line.extend <- function(loc,ww=world){
   vv <- line.valence(loc,ww)
   if(vv[1]==2){
     nn <- line.partner(loc,1,ww)
-    if(abs(nn)!=loc) ww <- merge.line(nn,loc,ww)                
+    if(abs(nn)!=loc) ww <- line.merge(nn,loc,ww)                
   } else if(vv[2]==2){
     nn <- line.partner(loc,2,ww)
-    if(abs(nn)!=loc) ww <- merge.line(loc,nn,ww)
+    if(abs(nn)!=loc) ww <- line.merge(loc,nn,ww)
   }
   ww
 }
@@ -301,7 +301,7 @@ merge.map <- function(ww=world,nmax=Inf){
 #    print(count)
     while(2 %in% line.valence(loc,ww) & count < nmax) {
       count <- count+1
-      ww <- extend.line(loc,ww)
+      ww <- line.extend(loc,ww)
     }
     loc <- loc+1
   }
@@ -324,7 +324,7 @@ get.gon <- function(loc,ww=world){
 }
 
 
-replace.gon <- function(loc,newdata,newname,ww=world,corLR=FALSE){
+gon.replace <- function(loc,newdata,newname,ww=world,corLR=FALSE){
   newgon <- ww$gon
   newgon$data <- c(ww$gon$data[1:ww$gon$E[(loc-1)]],NA,newdata,NA,
                             ww$gon$data[ww$gon$B[(loc+1)]:length(ww$gon$data)])
@@ -348,7 +348,7 @@ replace.gon <- function(loc,newdata,newname,ww=world,corLR=FALSE){
 
 
 
-add.gon <- function(loc,newdata,newname,ww=world,corLR=FALSE){
+gon.add <- function(loc,newdata,newname,ww=world,corLR=FALSE){
   newgon <- ww$gon
   newgon$data <- c(ww$gon$data[1:ww$gon$E[(loc-1)]],NA,newdata,NA,
                             ww$gon$data[ww$gon$B[loc]:length(ww$gon$data)])
@@ -373,7 +373,7 @@ add.gon <- function(loc,newdata,newname,ww=world,corLR=FALSE){
   list(gon=newgon,line=newline)
 }
 
-add.line <- function(loc,newx,newy,newL,newR,ww=world){
+line.add <- function(loc,newx,newy,newL,newR,ww=world){
   newline <- ww$line
   newline$x <- c(ww$line$x[1:ww$line$E[(loc-1)]],NA,newx,NA,
               ww$line$x[ww$line$B[loc]:length(ww$line$x)])
@@ -418,7 +418,7 @@ line.replace <- function(xy,loc,ww=world){
 }
 
 
-split.line <- function(pos,ww=world){
+line.split <- function(pos,ww=world){
   if (pos %in% ww$line$B | pos %in% ww$line$E) stop('cannot split at vertex')
   lloc <- find.loc(pos,ww)
   newline <- ww$line
@@ -551,7 +551,7 @@ ap <- function(xy,w=w2,nx=1000,ny=nx,...){
 
 ### CONSISTENCY CHECKS  
 
-mirror.line <- function(loc,ww=world){
+line.mirror <- function(loc,ww=world){
   i1 <- ww$line$L[loc]
   ww$line$L[loc] <- ww$line$R[loc]
   ww$line$R[loc] <- i1
@@ -563,7 +563,7 @@ check.gon <- function(gloc,ww=world){
 ### very useful to see if a gone is correctly formed
 ### notice that the original world database has many errors in L/R labels
 ### But that doesn't do much harm, apparantly.
-  glines <- get.gon(gloc,data)
+  glines <- get.gon(gloc,ww)
   for(lloc in glines){
     ll <- ww$line$L[abs(lloc)]
     rr <- ww$line$R[abs(lloc)]
@@ -611,6 +611,7 @@ check.gon2 <- function(gloc,ww=world,correct=FALSE){
       result$by[i]  <- ww$line$y[ww$line$E[abs(lloc)]]
     }
   }
+  print(result)
 ### check closure (usually OK)
   if(result$bx[1] != result$ex[N] | 
      result$by[1] != result$ey[N]) warning(paste("GON",gloc,": Bad closure 1"))
@@ -620,7 +621,7 @@ check.gon2 <- function(gloc,ww=world,correct=FALSE){
   
   for(i in 1:N) if(result$L[i] != gloc) {
     warning(paste("GON",gloc,"line",i,"incorrectly oriented?"))
-    if(correct) ww <- mirror.line(abs(glines[i]),ww)
+    if(correct) ww <- line.mirror(abs(glines[i]),ww)
   }
 ###
   if(correct) ww else NULL
@@ -767,7 +768,7 @@ meridian.split<-function(ww=world){
     if(!is.na(ww$line$x[i]) & !is.na(ww$line$x[(i+1)]) & !is.na(ww$line$x[(i-1)])){
       if(ww$line$x[i]==0){
         cat("split at",i,ww$line$x[i],ww$line$x[i+1],"\n")
-        ww <- split.line(i,ww)
+        ww <- line.split(i,ww)
         k<-k+1
       }
     }
@@ -844,7 +845,7 @@ export.name <- function(ww=world,outfile='world'){
 ########################################3
 ### little bug: this function doesn't fix the L/R polygon data in world$line
 ### so you need to run 
-remove.gon <- function(loc,ww=world){
+gon.remove <- function(loc,ww=world){
   x1=ww$gon$B[loc]
   x2=ww$gon$E[loc]+1
   xl=ww$gon$length[loc]+1
@@ -861,7 +862,7 @@ remove.gon <- function(loc,ww=world){
   ww
 }
 
-remove.line <- function(loc,ww=world,quiet=TRUE){
+line.remove <- function(loc,ww=world,quiet=TRUE){
   loc <- abs(loc)
   if (!quiet) print(paste("removing",loc))
   if(any(nna(ww$gon$data)==loc) | any(nna(ww$gon$data)== -loc)) stop("Line still used") 
@@ -890,13 +891,13 @@ orphan.lines <- function(ww){
   i <- 1
   while (i <= ww$line$nline) {
     zzz <- which(abs(ww$gon$data)==i)
-    if(length(zzz)==0) ww <- remove.line(i,ww,quiet=FALSE)
+    if(length(zzz)==0) ww <- line.remove(i,ww,quiet=FALSE)
     else i <- i+1
   }
   ww
 }
 
-remove.point <- function(i,ww=world){
+point.remove <- function(i,ww=world){
   ll <- find.loc(i,ww)
   nl <- ww$line$nlines
   ww$line$x <- ww$line$x[-i]
